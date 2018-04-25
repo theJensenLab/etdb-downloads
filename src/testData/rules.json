@@ -1,0 +1,8 @@
+[
+	{
+		"type": "simple",
+		"searchOn": "microscopist",
+		"searchType": "contains",
+		"searchFor": "Gavin Murphy"
+	}
+]

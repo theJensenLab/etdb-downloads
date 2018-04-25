@@ -1,0 +1,39 @@
+{
+  "name": "etdb-bulk-download",
+  "version": "0.1.0",
+  "description": "Bulk download for the Caltech ETDB",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theJensenLab/etdb-bulk-download.git"
+  },
+  "keywords": [
+    "science",
+    "etdb",
+    "electronTomography"
+  ],
+  "author": "Davi Ortega",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/theJensenLab/etdb-bulk-download/issues"
+  },
+  "homepage": "https://github.com/theJensenLab/etdb-bulk-download#readme",
+  "dependencies": {
+    "argparse": "^1.0.10",
+    "chalk": "^2.4.0",
+    "figlet": "^1.2.0",
+    "oip-js": "^1.1.8",
+    "shelljs": "^0.8.1",
+    "through2": "^2.0.3"
+  },
+  "devDependencies": {
+    "chai": "^4.1.2",
+    "coveralls": "^3.0.0",
+    "eslint": "^4.19.1",
+    "mocha": "^5.1.1",
+    "nyc": "^11.7.1"
+  }
+}
