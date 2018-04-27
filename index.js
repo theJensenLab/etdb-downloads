@@ -12,9 +12,9 @@ let parser = new ArgumentParser({
 })
 
 parser.addArgument(
-	'searchParameterFile',
+	'queryStack',
 	{
-		help: 'Search parameter file'
+		help: 'JSON file with query stack'
 	}
 )
 
@@ -25,12 +25,15 @@ parser.addArgument(
 	}
 ) */
 
-const rule = {
-	type: 'simple',
+const rule = [
+	{
+	type: 'filter',
 	searchOn: 'microscopist',
 	searchType: 'contains',
 	searchFor: 'Gavin Murphy'
-}
-
+	}
+]
 const args = parser.parseArgs()
-app(args.searchParameterFile)
+const queryStack = JSON.parse(fs.readFileSync(args.queryStack))
+console.log(queryStack)
+app(queryStack)

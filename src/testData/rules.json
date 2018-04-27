@@ -1,7 +1,7 @@
 [
 	{
-		"type": "simple",
-		"searchOn": "microscopist",
+		"type": "filter",
+		"searchOn": "artifact.details.microscopist",
 		"searchType": "contains",
 		"searchFor": "Gavin Murphy"
 	}

@@ -23,11 +23,13 @@
   "homepage": "https://github.com/theJensenLab/etdb-bulk-download#readme",
   "dependencies": {
     "argparse": "^1.0.10",
-    "chalk": "^2.4.0",
+    "chalk": "^2.4.1",
+    "complex-filter-stream": "^0.1.4",
     "figlet": "^1.2.0",
-    "oip-js": "^1.1.8",
+    "oip-js": "^1.1.9",
     "shelljs": "^0.8.1",
-    "through2": "^2.0.3"
+    "through2": "^2.0.3",
+    "yarn": "^1.6.0"
   },
   "devDependencies": {
     "chai": "^4.1.2",
