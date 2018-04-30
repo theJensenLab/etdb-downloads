@@ -3,6 +3,6 @@
 		"type": "filter",
 		"searchOn": "artifact.details.microscopist",
 		"searchType": "contains",
-		"searchFor": "Gavin Murphy"
+		"searchFor": "Ariane Briegel"
 	}
 ]

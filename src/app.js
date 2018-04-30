@@ -23,7 +23,7 @@ module.exports = (queryStack) => {
 
 		artifacts.map((artifact, i) => {
 			artifactStream.push(artifact)
-			if (i + 1 === artifacts.length)
+			if (i === artifacts.length)
 				artifactStream.push(null)
 		})
 
@@ -33,7 +33,13 @@ module.exports = (queryStack) => {
 		artifactStream
 			.pipe(filter)
 			.pipe(through2.obj((chunk, enc, done) => {
-				console.log(JSON.stringify(chunk.artifact.details, null, ' '))
+				console.log(`sid: ${chunk.artifact.details.sid}`)
+				console.log(`location: ${chunk.artifact.storage.location}`)
+				console.log(chunk.artifact)
+				chunk.artifact.storage.files.map((file) => {
+					console.log(file)
+					console.log(`${file.subtype}: ${file.fname}`)
+				})
 				done()
 			}))
 		artifacts.push(null)
