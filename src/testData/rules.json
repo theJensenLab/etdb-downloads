@@ -1,8 +1,0 @@
-[
-	{
-		"type": "filter",
-		"searchOn": "artifact.details.microscopist",
-		"searchType": "contains",
-		"searchFor": "Andreas Kjaer"
-	}
-]

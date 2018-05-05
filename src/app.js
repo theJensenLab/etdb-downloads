@@ -1,86 +1,116 @@
 'use strict'
 
-const stream = require('stream')
-const through2 = require('through2')
+const fs = require('fs')
 const chalk = require('chalk')
 const inquirer = require('inquirer')
 const filesize = require('filesize')
-
-const simpleType2Subtypes = {
-	'Tiltseries': 'TiltSeries',
-	'Reconstruction': 'Reconstruction',
-	'Subvolume': 'Subvolume',
-	'Keymov': 'Movie',
-	'Keyimg': 'Image',
-	'Snapshot': 'Image',
-	'Other': 'Other'
-}
+const complexFilter = require('complex-filter')
 
 const Spinner = require('cli-spinner').Spinner
 const spinnerLoadingTomo = new Spinner(chalk.cyan('Loading tomograms, please wait - ') + chalk.hex('#FF6E1E')('%s'))
 spinnerLoadingTomo.setSpinnerString(18)
 
-const spinnerProcessing = new Spinner(chalk.cyan('Processing stream - ') + chalk.hex('#FF6E1E')('%s'))
-spinnerProcessing.setSpinnerString(18)
-
-const complexFilterStream = require('complex-filter-stream')
 
 const OIPJS = require('oip-js').OIPJS
-
 const Core = OIPJS({
 	OIPdURL: 'https://snowflake.oip.fun/alexandria/v2',
 	indexFilters: {
 		publisher: 'FTSTq8xx8yWUKJA5E3bgXLzZqqG9V6dvnr'
-	}
+	},
+	runIPFSJS: true
 })
 
+const simpleType2Subtypes = {
+	Tiltseries: 'TiltSeries',
+	Reconstruction: 'Reconstructions',
+	Subvolume: 'Subvolumes',
+	Keymov: 'Movies',
+	Keyimg: 'Images',
+	Snapshot: 'Images',
+	Other: 'Others'
+}
+
 module.exports = (queryStack, fileType) => {
-	process.stdout.write(fileType)
 	spinnerLoadingTomo.start()
 	Core.Index.getSupportedArtifacts((artifacts) => {
 		spinnerLoadingTomo.stop()
-		const artifactStream = new stream.Readable({objectMode: true})
-		artifacts.map((artifact, i) => {
-			artifactStream.push(artifact)
-		})
-		artifactStream.push(null)
-		
-		const filter = complexFilterStream(queryStack)
+		const filter = complexFilter(queryStack)
+		const selected = artifacts.filter(filter)
+
 		const downloadList = []
-		let totalDownload = 0
-		process.stdout.write(chalk.cyan('\nFiltering streams'))
-		let numberOfStreamed = 0
-		let numberOfSelected = 0
-		spinnerProcessing.start()
-		artifactStream
-			.on('data', () => {
-				numberOfStreamed++
-				process.stdout.clearLine()
-				process.stdout.cursorTo(0)
+		const numberOfStreamed = artifacts.length
+		const numberOfSelectedArtifacts = selected.length
+		let totalDownloadSize = 0
+		let numberOfSelectedFiles = 0
+
+		selected.forEach((artifact) => {
+			let files = artifact.getFiles()
+
+			if (!(fileType === 'All')) {
+				files = files.filter((file) => {
+					return fileType.indexOf(simpleType2Subtypes[file.getSubtype()]) !== -1
+				})
+			}
+			numberOfSelectedFiles += files.length
+			files.forEach((file) => {
+				totalDownloadSize += file.getFilesize()
 			})
-			.pipe(filter)
-			.on('data', (chunk) => {
-				numberOfSelected++
-				// process.stdout.write(chunk.artifact.details.sid)
-				const files = chunk.getFiles()
-				files.filter((file) => {
-					return simpleType2Subtypes[file.getSubtype()] === fileType
-				})
-				files.map((file) => {
-					totalDownload += file.getFilesize()
-				})
+		})
+
+		const fileSize = filesize(totalDownloadSize, {base: 10})
+
+		inquirer.prompt([{
+			message: chalk.cyan(`\nThe search parameters let to a ${numberOfSelectedArtifacts} records with ${numberOfSelectedFiles} files with a total of ${fileSize} for download. Would you like to proceed?`),
+			type: 'confirm',
+			name: 'answer'
+		}])
+			.then((answer) => {
+				if (answer.answer) {
+					const directoryName = `etdb-download-${Date.now()}`
+					process.stdout.write(`Making new directory: ${directoryName}\n`)
+					fs.mkdirSync(directoryName)
+					process.stdout.write(`Entering new directory: ${directoryName}\n`)
+					process.chdir(directoryName)
+					selected.forEach((artifact) => {
+						const artifactID = artifact.txid.slice(0, 6)
+						process.stdout.write(`-Dealing with files/metadata from tomogram: ${chalk.green(artifactID)}\n`)
+						process.stdout.write(`--Making new directory: ${chalk.green(artifactID)}\n`)
+						fs.mkdirSync(artifactID)
+						process.stdout.write(`--Entering new directory: ${chalk.green(artifactID)}\n`)
+						process.chdir(artifactID)
+						let files = artifact.getFiles()
+						if (fileType !== 'All') {
+							files = files.filter((file) => {
+								return fileType.indexOf(simpleType2Subtypes[file.getSubtype()]) !== -1
+							})
+						}
+						const streams = []
+						files.forEach((file) => {
+							process.stdout.write(`---Downloading file ${chalk.cyan(file.getDisplayName())} at ${chalk.cyan(artifact.getLocation())}\n`)
+							const ipfsFilePath = '/ipfs/' + artifact.getLocation() + '/' + file.getFilename()
+							const readStream = Core.Network.ipfs.files.getReadableStream(ipfsFilePath)
+							const writeStream = fs.createWriteStream(file.getDisplayName())
+							readStream.on('data', (f) => {
+								console.log(f.path)
+								f.content.pipe(writeStream)
+							})
+							readStream.on('error', (err) => {
+								console.log(err)
+							})
+							readStream
+						})
+						process.stdout.write(`--Exting directory:${chalk.green(artifactID)}\n`)
+						process.chdir('..')
+					})
+					process.stdout.write(`Exiting directory: ${directoryName}\n`)
+					process.chdir('..')
+				}
+
+				process.stdout.write('Done processing\n')
+				process.exit()
 			})
-			.on('finish', () => {
-				spinnerProcessing.stop()
-				console.log('hey')
-				const fileSize = filesize(totalDownload, {base: 10})
-				inquirer.prompt([{
-					message: chalk.cyan(`The search parameters let to a ${numberOfSelected} files with a total of ${fileSize} for download. Would you like to proceed?`),
-					type: 'confirm',
-					name: 'answer'
-				}], (answer) => {
-					process.stdout.write(answer)
-				})
+			.catch((err) => {
+				console.error(err)
 			})
 	}, (error) => {
 		console.error(error)

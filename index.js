@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 'use strict'
 
+const pkjson = require('./package.json')
 const figlet = require('figlet')
 const chalk = require('chalk')
-const splash = figlet.textSync('ETDB-download', {horizontalLayout: 'fitted'})
+const splash = figlet.textSync(`ETDB-download`, {horizontalLayout: 'fitted'})
 console.log(chalk.cyan(splash))
-console.log(chalk.hex('#FF6E1E')('\t\t\t\t\t\t\t\t\t     by Jensen Lab'))
+console.log(`\t\t\t\t\t\t\t       ${chalk.cyan("version " + pkjson.version)} ${chalk.hex("#FF6E1E")("by Jensen Lab")}`)
 
 
 const ArgumentParser = require('argparse').ArgumentParser
@@ -26,8 +27,9 @@ parser.addArgument(
 parser.addArgument(
 	'--fileType',
 	{
-		help: 'comma separated types of file to be downloaded (TODO)',
-		choices: ['TiltSeries', 'Reconstructions', 'Images', 'Videos'],
+		help: 'comma separated types of file to be downloaded',
+		choices: ['TiltSeries', 'Reconstructions', 'Images', 'Videos', 'Others'],
+		nargs: '+'
 	}
 )
 
@@ -35,4 +37,5 @@ const args = parser.parseArgs()
 const queryStack = JSON.parse(fs.readFileSync(args.queryStack))
 console.log(chalk.green('Search parameters accepted'))
 const app = require('./src/app')
-app(queryStack, args.fileType || 'All')
+const fileType = args.fileType || 'All'
+app(queryStack, fileType)

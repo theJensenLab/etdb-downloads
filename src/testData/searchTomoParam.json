@@ -1,0 +1,8 @@
+[
+	{
+		"type": "filter",
+		"searchOn": "artifact.details.sid",
+		"searchType": "exact",
+		"searchFor": "gm2005-08-02-5"
+	}
+]
