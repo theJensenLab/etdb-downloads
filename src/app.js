@@ -5,6 +5,9 @@ const chalk = require('chalk')
 const inquirer = require('inquirer')
 const filesize = require('filesize')
 const complexFilter = require('complex-filter')
+const PassThrough = require('stream').PassThrough
+const t2 = require('through2')
+
 
 const Spinner = require('cli-spinner').Spinner
 const spinnerLoadingTomo = new Spinner(chalk.cyan('Loading tomograms, please wait - ') + chalk.hex('#FF6E1E')('%s'))
@@ -85,19 +88,28 @@ module.exports = (queryStack, fileType) => {
 							})
 						}
 						const streams = []
+
 						files.forEach((file) => {
 							process.stdout.write(`---Downloading file ${chalk.cyan(file.getDisplayName())} at ${chalk.cyan(artifact.getLocation())}\n`)
 							const ipfsFilePath = '/ipfs/' + artifact.getLocation() + '/' + file.getFilename()
-							const readStream = Core.Network.ipfs.files.getReadableStream(ipfsFilePath)
-							const writeStream = fs.createWriteStream(file.getDisplayName())
-							readStream.on('data', (f) => {
-								console.log(f.path)
-								f.content.pipe(writeStream)
+							console.log(ipfsFilePath)
+							const readStream = Core.Network.ipfs.files.getReadableStream(artifact.getLocation())
+							// const writeStream = fs.createWriteStream(file.getDisplayName())
+
+							const p = new Promise((resolve, reject) => {
+								readStream.on('data', (data) => {
+									console.log(data)
+									resolve(data)
+								})
+									.on('error', (err) => {
+										console.log(err)
+									})
 							})
-							readStream.on('error', (err) => {
-								console.log(err)
-							})
-							readStream
+							streams.push(p)
+						})
+						Promise.all(streams).then((strms) => {
+							console.log('dsadsa')
+							console.log(strms.path)
 						})
 						process.stdout.write(`--Exting directory:${chalk.green(artifactID)}\n`)
 						process.chdir('..')
@@ -107,7 +119,6 @@ module.exports = (queryStack, fileType) => {
 				}
 
 				process.stdout.write('Done processing\n')
-				process.exit()
 			})
 			.catch((err) => {
 				console.error(err)

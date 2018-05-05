@@ -29,8 +29,10 @@
     "figlet": "^1.2.0",
     "filesize": "^3.6.1",
     "inquirer": "^5.2.0",
-    "oip-js": "^1.1.9",
+    "ipfs": "^0.28.2",
+    "oip-js": "^1.1.20",
     "shelljs": "^0.8.1",
+    "through2": "^2.0.3",
     "yarn": "^1.6.0"
   },
   "devDependencies": {
