@@ -28,8 +28,16 @@ parser.addArgument(
 	'--fileType',
 	{
 		help: 'comma separated types of file to be downloaded',
-		choices: ['TiltSeries', 'Reconstructions', 'Images', 'Videos', 'Others'],
+		choices: ['TiltSeries', 'Reconstructions', 'Images', 'Movies', 'Others', 'None'],
 		nargs: '+'
+	}
+)
+
+parser.addArgument(
+	'--resume',
+	{
+		help: 'pass teh directory name of the download job you wish to resume',
+		nargs: 1
 	}
 )
 
@@ -38,4 +46,5 @@ const queryStack = JSON.parse(fs.readFileSync(args.queryStack))
 console.log(chalk.green('Search parameters accepted'))
 const app = require('./src/app')
 const fileType = args.fileType || 'All'
-app(queryStack, fileType)
+const resume = args.resume
+app(queryStack, fileType, resume)
