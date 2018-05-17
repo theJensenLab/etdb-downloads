@@ -46,5 +46,8 @@ const queryStack = JSON.parse(fs.readFileSync(args.queryStack))
 console.log(chalk.green('Search parameters accepted'))
 const app = require('./src/app')
 const fileType = args.fileType || 'All'
-const resume = args.resume
+let resume = args.resume
+if (resume)
+	resume = resume[0]
+
 app(queryStack, fileType, resume)
