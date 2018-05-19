@@ -34,9 +34,17 @@ parser.addArgument(
 )
 
 parser.addArgument(
-	'--resume',
+	'--directory',
 	{
-		help: 'pass teh directory name of the download job you wish to resume',
+		help: 'pass the directory name where to download the files',
+		nargs: 1
+	}
+)
+
+parser.addArgument(
+	'--threads',
+	{
+		help: 'number of threads',
 		nargs: 1
 	}
 )
@@ -46,8 +54,7 @@ const queryStack = JSON.parse(fs.readFileSync(args.queryStack))
 console.log(chalk.green('Search parameters accepted'))
 const app = require('./src/app')
 const fileType = args.fileType || 'All'
-let resume = args.resume
-if (resume)
-	resume = resume[0]
+const directory = (args.directory) ? args.directory[0] : args.directory
+const threads = (args.threads) ? parseInt(args.threads[0]) : 1
 
-app(queryStack, fileType, resume)
+app(queryStack, fileType, directory, threads)
