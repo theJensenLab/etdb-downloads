@@ -11,20 +11,33 @@ const Listr = require('listr')
 const Observable = require('zen-observable')
 
 const ipfsAPI = require('ipfs-api')
+const ipfsB = new ipfsAPI({
+	host: '127.0.0.1',
+	port: 4001,
+	protocol: 'http'
+})
 const ipfs = new ipfsAPI(
 	{
 		host: 'gateway.ipfs.io',
 		port: 443,
 		protocol: 'https'
 	})
-// const ipfsA = new ipfsAPI()
+const IPFS = require('ipfs')
+const ipfsA = new IPFS({
+	repo: './ipfsRepo'
+})
+
+ipfsA.on('ready', () => {
+	console.log('ready')
+})
 
 const Spinner = require('ora')
-const spinnerLoadingTomo = new Spinner(chalk.cyan('Loading tomograms, please wait - ') + chalk.hex('#FF6E1E')('%s'))
+const spinnerLoadingTomo = new Spinner(chalk.cyan('Loading tomograms, please wait'))
 
 
 const OIPJS = require('oip-js').OIPJS
 const Core = OIPJS({
+	OIPdURL: 'snowflake.oip.fun/v2/alexandria',
 	indexFilters: {
 		publisher: 'FTSTq8xx8yWUKJA5E3bgXLzZqqG9V6dvnr'
 	}
@@ -46,11 +59,15 @@ const filterExistingFiles = (files, location, localDirectory) => {
 		files.forEach((file) => {
 			const fileIpfsPath = '/ipfs/' + location + '/' + file.getFilename()
 			const filePath = path.resolve(localDirectory, location, file.getDisplayName())
+			// process.stdout.write(chalk.green(`File ${file.getDisplayName()}`))
 			const promise = new Promise((res, rej) => {
 				if (fs.existsSync(filePath)) {
-					return ipfs.files.add([{content: fs.createReadStream(filePath)}], {hashOnly: true, rawLeaves: true})
+					return ipfsB.files.add([{content: fs.createReadStream(filePath)}], {hashOnly: true, rawLeaves: true})
 						.then((results) => {
-							ipfs.files.stat(fileIpfsPath).then((info) => {
+							console.log('here')
+							console.log(results)
+							ipfsB.files.stat(fileIpfsPath).then((info) => {
+								console.log('even here')
 								const localFileHash = results[0].hash
 								if (info.hash === localFileHash) {
 									// process.stdout.write(chalk.green(info.hash) + ' - ' + chalk.red(localFileHash) + '\n')
@@ -65,6 +82,7 @@ const filterExistingFiles = (files, location, localDirectory) => {
 							})
 						})
 						.catch((err) => {
+							console.log(err)
 							reject(err)
 						})
 				}
@@ -74,7 +92,6 @@ const filterExistingFiles = (files, location, localDirectory) => {
 			})
 			promises.push(promise)
 		})
-
 		Promise.all(promises)
 			.then((schedule) => {
 				files = files.filter((file, i) => {
@@ -128,11 +145,6 @@ const getStats = function(artifacts, fileType, directoryName) {
 }
 
 module.exports = (queryStack, fileType, resume, threads) => {
-	ipfs.config.get().then((info) => {
-		console.log(info.toString())
-	}).catch((err) => {
-		throw err
-	})
 	spinnerLoadingTomo.start()
 	Core.Index.getArtifacts('*', (artifacts) => {
 		spinnerLoadingTomo.stop()
@@ -280,7 +292,8 @@ module.exports = (queryStack, fileType, resume, threads) => {
 			})
 	}, (error) => {
 		spinnerLoadingTomo.stop()
-		console.log('Error in getting the metadata of tomograms')
-		console.error(error)
+		console.log('Error in getting the metadata of tomograms. OIP must be down.')
+		console.error(error.message)
+		process.exit(1)
 	})
 }
