@@ -9,17 +9,9 @@ const complexFilter = require('complex-filter')
 const through2 = require('through2')
 const Listr = require('listr')
 const Observable = require('zen-observable')
-
-const IPFS = require('ipfs-api')
-const ipfsDownload = new IPFS({
-	host: 'gateway.ipfs.io',
-	port: 443,
-	protocol: 'https'
-})
-
 const IPFSFactory = require('ipfsd-ctl')
-
-
+const IPFSApi = require('ipfs-api')
+const Spinner = require('cli-spinner').Spinner
 
 const repoPath = '.ipfsRepo'
 const optionsIpfsd = {
@@ -31,9 +23,14 @@ const optionsIpfsd = {
 const server = IPFSFactory.createServer()
 const node = IPFSFactory.create()
 
-const Spinner = require('ora')
-const spinnerLoadingTomo = new Spinner(chalk.cyan('Loading tomograms, please wait'))
+const ipfsDownload = new IPFSApi({
+	host: 'gateway.ipfs.io', // 'ipfs.oip.fun',
+	port: 443,
+	protocol: 'https'
+})
 
+const spinnerLoadingTomo = new Spinner(chalk.cyan('Loading tomograms, please wait - ') + chalk.hex('#FF6E1E')('%s'))
+spinnerLoadingTomo.setSpinnerString(18)
 
 const OIPJS = require('oip-js').OIPJS
 const Core = OIPJS({
@@ -48,60 +45,95 @@ const simpleType2Subtypes = {
 	Tiltseries: 'TiltSeries',
 	Reconstruction: 'Reconstructions',
 	Subvolume: 'Subvolumes',
-	Keymov: 'Movies',
+	Keymov: 'Videos',
 	Keyimg: 'Images',
 	Snapshot: 'Images',
 	Other: 'Others'
 }
 
+const ipfsLsRecursive = (ipfsPath) => {
+	return new Promise((resolve, reject) => {
+		ipfsDownload.ls(ipfsPath)
+			.then((lsInfo) => {
+				let finalResult = lsInfo
+				const dirs = lsInfo.filter((item) => {
+					return item.type === 'dir'
+				})
+				const promises = []
+				dirs.forEach((dir) => {
+					promises.push(ipfsLsRecursive(dir.path))
+				})
+				Promise.all(promises)
+					.then((results) => {
+						results.forEach((result) => {
+							result.forEach((entry) => {
+								finalResult.push(entry)
+							})
+						})
+						resolve(finalResult)
+					})
+					.catch((err) => {
+						reject(err)
+					})
+			})
+	})
+}
+
+
 const filterExistingFiles = (files, location, localDirectory, ipfs) => {
 	return new Promise((resolve, reject) => {
 		const promises = []
-		files.forEach((file) => {
-			const fileIpfsPath = '/ipfs/' + location + '/' + file.getFilename()
-			const filePath = path.resolve(localDirectory, location, file.getDisplayName())
-			const promise = new Promise((res, rej) => {
-				if (fs.existsSync(filePath)) {
-					return ipfs.api.files.add([{content: fs.createReadStream(filePath)}], {hashOnly: true, rawLeaves: true})
-						.then((results) => {
-							ipfs.api.files.stat(fileIpfsPath, (err, info) => {
-								if (err) {
-									throw err
-									reject(err)
-								}
-								const localFileHash = results[0].hash
-								if (info.hash === localFileHash) {
+		ipfsLsRecursive('/ipfs/' + location)
+			.then((hashInfoStack) => {
+				files.forEach((file) => {
+					const fileIpfsPath = '/ipfs/' + location + '/' + file.getFilename()
+					const filePath = path.resolve(localDirectory, location, file.getDisplayName())
+					const promise = new Promise((res, rej) => {
+						if (fs.existsSync(filePath)) {
+							return ipfs.api.files.add([{content: fs.createReadStream(filePath)}], {hashOnly: true, rawLeaves: true})
+								.then((results) => {
+									const hashInfo = hashInfoStack.filter((item) => {
+										return item.path === fileIpfsPath
+									})
+									if (hashInfo.length === 0) {
+										console.log(fileIpfsPath)
+										console.log(hashInfoStack)
+										process.exit()
+									}
+									const hash = hashInfo[0].hash
+									const localFileHash = results[0].hash
+									if (hash === localFileHash) {
+										// process.stdout.write(chalk.green(info.hash) + ' - ' + chalk.red(localFileHash) + '\n')
+										process.stdout.write(chalk.red(`File ${file.getDisplayName()} exists. Skiping\n`))
+										res(false)
+										return
+									}
 									// process.stdout.write(chalk.green(info.hash) + ' - ' + chalk.red(localFileHash) + '\n')
-									process.stdout.write(chalk.red(`File ${file.getDisplayName()} exists. Skiping\n`))
-									res(false)
+									process.stdout.write(chalk.yellow(`File ${file.getDisplayName()} exists but is corrupt. Scheduling for download\n`))
+									res(true)
 									return
-								}
-								// process.stdout.write(chalk.green(info.hash) + ' - ' + chalk.red(localFileHash) + '\n')
-								process.stdout.write(chalk.yellow(`File ${file.getDisplayName()} exists but is corrupt. Scheduling for download\n`))
-								res(true)
-								return
-							})
-						})
-						.catch((err) => {
-							console.log(err)
-							reject(err)
-						})
-				}
-				// process.stdout.write(chalk.green(`File ${file.getDisplayName()} does not exist. Scheduling for download\n`))
-				res(true)
-				return true
-			})
-			promises.push(promise)
-		})
-		Promise.all(promises)
-			.then((schedule) => {
-				files = files.filter((file, i) => {
-					return schedule[i]
+								})
+								.catch((err) => {
+									console.log(err)
+									reject(err)
+								})
+						}
+						// process.stdout.write(chalk.green(`File ${file.getDisplayName()} does not exist. Scheduling for download\n`))
+						res(true)
+						return true
+					})
+					promises.push(promise)
 				})
-				resolve(files, schedule)
-			})
-			.catch((err) => {
-				throw err
+				Promise.all(promises)
+					.then((schedule) => {
+						files = files.filter((file, i) => {
+							return schedule[i]
+						})
+						resolve(files, schedule)
+					})
+					.catch((err) => {
+						throw err
+					})
 			})
 	})
 }
@@ -136,6 +168,7 @@ const getStats = function(artifacts, fileType, directoryName, ipfs) {
 		})
 		Promise.all(promises)
 			.then((results) => {
+				stats.results = results
 				resolve(stats)
 			})
 			.catch((err) => {
@@ -143,6 +176,10 @@ const getStats = function(artifacts, fileType, directoryName, ipfs) {
 				reject(err)
 			})
 	})
+}
+
+const printMessage = (message, space) => {
+	return message + '.'.repeat(space - message.length)
 }
 
 const initIfNotThere = (ipfs) => {
@@ -162,10 +199,6 @@ const initIfNotThere = (ipfs) => {
 			})
 		}
 	})
-}
-
-const printMessage = (message, space) => {
-	return message + '.'.repeat(space - message.length)
 }
 
 module.exports = (queryStack, fileType, resume, threads) => {
@@ -191,7 +224,7 @@ module.exports = (queryStack, fileType, resume, threads) => {
 							process.stdout.write(chalk.red(' Fail\n'))
 							throw errorr
 						}
-						process.stdout.write(chalk.green(' OK\n'))
+						process.stdout.write(chalk.green(' OK\n\n'))
 						spinnerLoadingTomo.start()
 						Core.Index.getArtifacts('*', (artifacts) => {
 							spinnerLoadingTomo.stop()

@@ -1,0 +1,8 @@
+[
+    {
+		"type": "filter",
+		"searchOn": "artifact.details.speciesName",
+		"searchType": "exact",
+		"searchFor": "Pseudomonas aeruginosa"
+	}
+]

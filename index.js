@@ -28,7 +28,7 @@ parser.addArgument(
 	'--fileType',
 	{
 		help: 'comma separated types of file to be downloaded',
-		choices: ['TiltSeries', 'Reconstructions', 'Images', 'Movies', 'Others', 'None'],
+		choices: ['TiltSeries', 'Reconstructions', 'Images', 'Videos', 'Others', 'None'],
 		nargs: '+'
 	}
 )
