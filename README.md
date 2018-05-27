@@ -1,4 +1,4 @@
-# ETDB-Download
+# ETDB-Downloads
 
 This is an example of third party command line application written in `nodejs` to download data from ETDB-Caltech. The goal here is not only provide the functionality for bulk download but also to exemplify how a simple app can be made to leverage the distributed nature of ETDB.
 

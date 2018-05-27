@@ -1,5 +1,5 @@
 {
-  "name": "etdb-download",
+  "name": "etdb-downloads",
   "version": "0.1.0",
   "description": "Bulk download for the Caltech ETDB",
   "main": "index.js",
@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "bin": {
-    "etdb-download": "index.js"
+    "etdb-downloads": "index.js"
   },
   "repository": {
     "type": "git",

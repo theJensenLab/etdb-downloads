@@ -1,3 +1,3 @@
-# ETDB-download :: Developer manual
+# ETDB-downloads :: Developer manual
 
 TODO

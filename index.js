@@ -4,9 +4,9 @@
 const pkjson = require('./package.json')
 const figlet = require('figlet')
 const chalk = require('chalk')
-const splash = figlet.textSync(`ETDB-download`, {horizontalLayout: 'fitted'})
+const splash = figlet.textSync(`ETDB-downloads`, {horizontalLayout: 'fitted'})
 console.log(chalk.cyan(splash))
-console.log(`\t\t\t\t\t\t\t       ${chalk.cyan("version " + pkjson.version)} ${chalk.hex("#FF6E1E")("by Jensen Lab")}`)
+console.log(`\t\t\t\t\t\t\t            ${chalk.cyan("version " + pkjson.version)} ${chalk.hex("#FF6E1E")("by Jensen Lab")}`)
 
 
 const ArgumentParser = require('argparse').ArgumentParser
