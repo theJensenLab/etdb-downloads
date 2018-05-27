@@ -38,17 +38,8 @@
     "ipfsd-ctl": "^0.37.0",
     "listr": "^0.14.1",
     "oip-js": "^1.1.22",
-    "ora": "^2.1.0",
-    "rimraf": "^2.6.2",
     "shelljs": "^0.8.1",
     "through2": "^2.0.3",
     "zen-observable": "^0.8.8"
-  },
-  "devDependencies": {
-    "chai": "^4.1.2",
-    "coveralls": "^3.0.0",
-    "eslint": "^4.19.1",
-    "mocha": "^5.1.1",
-    "nyc": "^11.7.1"
   }
 }

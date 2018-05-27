@@ -143,7 +143,8 @@ const getStats = function(artifacts, fileType, directoryName, ipfs) {
 	return new Promise((resolve, reject) => {
 		let stats = {
 			totalDownloadSize: 0,
-			numberOfSelectedFiles: 0
+			numberOfSelectedFiles: 0,
+			allowedFiles: []
 		}
 		const promises = []
 		artifacts.forEach((artifact) => {
@@ -168,11 +169,15 @@ const getStats = function(artifacts, fileType, directoryName, ipfs) {
 		})
 		Promise.all(promises)
 			.then((results) => {
-				stats.results = results
+				results.forEach((files) => {
+					files.forEach((file) => {
+						stats.allowedFiles.push(file.getFilename())
+					})
+				})
 				resolve(stats)
 			})
 			.catch((err) => {
-				process.stdout.write(`${chalk.red('Something is wrong processing artifact...')}\n`)
+				process.stdout.write(`${chalk.red('Something is wrong processing artifacts...')}\n`)
 				reject(err)
 			})
 	})
@@ -283,75 +288,65 @@ module.exports = (queryStack, fileType, resume, threads) => {
 														return fileType.indexOf(simpleType2Subtypes[file.getSubtype()]) !== -1
 													})
 												}
-												filterExistingFiles(files, artifact.getLocation(), directoryName, ipfs)
-													.then((selectedFiles, schedule) => {
-														if (selectedFiles.length !== 0)
-															process.stdout.write(`- Dealing with files from tomogram: ${chalk.green(artifactLocation)}\n`)
-														selectedFiles.forEach((file) => {
-															const ipfsFilePath = artifact.getLocation() + '/' + file.getFilename()
-															const filePath = path.resolve(artifactPath, file.getDisplayName())
-															const readStream = ipfsDownload.files.getReadableStream(ipfsFilePath)
-															downloads.push(
-																{
-																	title: ` ${chalk.green(artifactLocation)} - Download of ${chalk.cyan(file.getDisplayName())} at ${chalk.cyan(artifact.getLocation())}`,
-																	task: () => {
-																		return new Observable((observer) => {
-																			let downloaded = 0
-																			const totalDownload = file.getFilesize()
-																			observer.next(`Progress: ${filesize(downloaded, {base: 10})}/${filesize(totalDownload, {base: 10})}`)
-																			readStream
+												const selectedFiles = files.filter((file) => {
+													return stats.allowedFiles.indexOf(file.getFilename()) !== -1
+												})
+
+												if (selectedFiles.length !== 0)
+													process.stdout.write(`- Dealing with files from tomogram: ${chalk.green(artifactLocation)}\n`)
+												selectedFiles.forEach((file) => {
+													const ipfsFilePath = artifact.getLocation() + '/' + file.getFilename()
+													const filePath = path.resolve(artifactPath, file.getDisplayName())
+													const readStream = ipfsDownload.files.getReadableStream(ipfsFilePath)
+													downloads.push(
+														{
+															title: ` ${chalk.green(artifactLocation)} - Download of ${chalk.cyan(file.getDisplayName())} at ${chalk.cyan(artifact.getLocation())}`,
+															task: () => {
+																return new Observable((observer) => {
+																	let downloaded = 0
+																	const totalDownload = file.getFilesize()
+																	observer.next(`Progress: ${filesize(downloaded, {base: 10})}/${filesize(totalDownload, {base: 10})}`)
+																	readStream
+																		.on('error', (err) => {
+																			console.log('Error in getting the data')
+																			throw err
+																		})
+																		.pipe(through2.obj((data, enc, next) => {
+																			const writeStream = fs.createWriteStream(filePath)
+																			data.content
+																				.on('data', (dataFlow) => {
+																					downloaded += dataFlow.length
+																					observer.next(`Progress: ${filesize(downloaded, {base: 10})}/${filesize(totalDownload, {base: 10})}`)
+																				})
 																				.on('error', (err) => {
 																					console.log('Error in getting the data')
 																					throw err
 																				})
-																				.pipe(through2.obj((data, enc, next) => {
-																					const writeStream = fs.createWriteStream(filePath)
-																					data.content
-																						.on('data', (dataFlow) => {
-																							downloaded += dataFlow.length
-																							observer.next(`Progress: ${filesize(downloaded, {base: 10})}/${filesize(totalDownload, {base: 10})}`)
-																						})
-																						.on('error', (err) => {
-																							console.log('Error in getting the data')
-																							throw err
-																						})
-																						.pipe(writeStream)
-																						.on('finish', () => {
-																							// spinnerDownloadingFiles.stop()
-																							// process.stdout.write('\n')
-																							const progressSize = Math.ceil(currentStats.dataDownloaded / stats.totalDownloadSize * 100)
-																							const progressCount = Math.ceil(currentStats.filesDownloaded / stats.numberOfSelectedFiles * 100)
-																							currentStats.dataDownloaded += file.getFilesize()
-																							currentStats.filesDownloaded++
-																							const dataDownloadedReadable = filesize(currentStats.dataDownloaded, {base: 10})
-																							// process.stdout.write(`-- ${chalk.green(artifactLocation)} - ${chalk.cyan(file.getDisplayName())} download complete.\n`)
-																							// process.stdout.write(`Progress: Files downloaded: ${chalk.hsl(progressCount, 50, 50)(currentStats.filesDownloaded)}/${chalk.green(stats.numberOfSelectedFiles)}, ${chalk.hsl(progressSize, 50, 50)(dataDownloadedReadable)}/${chalk.green(filesize(stats.totalDownloadSize, {base: 10}))}.\n`)
-																							observer.complete()
-																							// resolve()
-																						})
-																						.on('error', (err) => {
-																							console.log('Error in processing the data')
-																							throw err
-																						})
-																				}))
+																				.pipe(writeStream)
+																				.on('finish', () => {
+																					const progressSize = Math.ceil(currentStats.dataDownloaded / stats.totalDownloadSize * 100)
+																					const progressCount = Math.ceil(currentStats.filesDownloaded / stats.numberOfSelectedFiles * 100)
+																					currentStats.dataDownloaded += file.getFilesize()
+																					currentStats.filesDownloaded++
+																					const dataDownloadedReadable = filesize(currentStats.dataDownloaded, {base: 10})
+																					observer.complete()
+																				})
 																				.on('error', (err) => {
-																					console.log('Error in retrieving the data')
-																					console.log(err)
+																					console.log('Error in processing the data')
 																					throw err
 																				})
+																		}))
+																		.on('error', (err) => {
+																			console.log('Error in retrieving the data')
+																			console.log(err)
+																			throw err
 																		})
-																	}
-																}
-															)
-														})
-													})
-													.catch((err) => {
-														console.log(err)
-														rej(err)
-													})
-													.then(() => {
-														res()
-													})
+																})
+															}
+														}
+													)
+												})
+												res()
 											})
 											promises.push(p)
 										})
