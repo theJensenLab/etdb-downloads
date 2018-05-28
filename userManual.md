@@ -43,7 +43,7 @@ Hit Ctrl-d to get out.
 
 ## Installing ETDB-downloads
 
-ETDB-downloads is on npm under the name [etdb-bulk-downloads](https://www.npmjs.com/package/etdb-bulk-downloads) and to install simply:
+ETDB-downloads is on npm under the name [etdb-downloads](https://www.npmjs.com/package/etdb-bulk-downloads) and to install simply:
 
 ```
 $ npm install -g etdb-downloads
@@ -63,26 +63,26 @@ and something like this should come up:
 
 > Important note: ETDB is a large database, so be aware that ETDB-downloads might fill up your disk with data if you are not paying attention.
 
-The only mandatory argument of ETDB-downloads is a `JSON` formated file that contains the search (or filtering) parameters. ETDB-downloads uses another package called [`complex-filter`](https://www.npmjs.com/package/complex-filter) and you can find much more information on how to write a `searchParamenter` file that is compatible with ETDB-downloads in the package's website.
+ETDB uses the [Open Index Protocol](https://oip.wiki) to deposit the metadata of the tomograms in the [FLO blockchain](https://flo.cash) and the [IPFS](https://ipfs.io) to store the data. The metadata is organized according to the OIP `artifact` for tomograms and you can find this info [here](https://oip.wiki/Research-Tomogram). We will need this information to be able to write a file that contains the parameters to select the tomograms we want to download. All these fields are accessible to the search parameter but what we are probably more interested is in the section `artifact.details`
 
-ETDB uses the [Open Index Protocol](https://oip.wiki) to deposit the metadata of the tomograms in the [FLO blockchain](https://flo.cash) and the [IPFS](https://ipfs.io) to store the data. Thus, the first information that you need is the format of the OIP `artifact` for tomograms and you can find this info [here](https://oip.wiki/Research-Tomogram). All these fields are accessible to the search parameter but what you are probably more interested is in the section `artifact.details`
+ETDB-downloads uses another package called [`complex-filter`](https://www.npmjs.com/package/complex-filter) to process the `searchParamenter` file. Please refer to the documentation of [`complex-filter`](https://www.npmjs.com/package/complex-filter) for the details on how we can build very complicated search requirements.  
 
-So, let's suppose we would like to download all the tomograms from _Pseudomonas aeruginosa_. To do that, we will have to pass as argument a file containing the following:
+So, let's suppose we would like to download all the tomograms from _Pseudomonas aeruginosa_. To do that, we will have to pass as argument a file containing the following text:
 
 ```json
 [
-    {
-		"type": "filter",
-		"searchOn": "artifact.details.speciesName",
-		"searchType": "exact",
-		"searchFor": "Pseudomonas aeruginosa"
-	}
+  {
+    "type": "filter",
+    "searchOn": "artifact.details.speciesName",
+    "searchType": "exact",
+    "searchFor": "Pseudomonas aeruginosa"
+  }
 ]
 ```
 
-Please refer to the documentation of [`complex-filter`](https://www.npmjs.com/package/complex-filter) for the details on how this works, but it should be straight forward: This is a parameter type `filter` that will `searchOn` `artifact.details.speciesName` field for a `exact` match with the `Pseudomonas aeruginosa`.
+In short, this is a parameter type `filter` that will `searchOn` `artifact.details.speciesName` field for an `exact` match with the `Pseudomonas aeruginosa` string.
 
-let's save this file as `Ps.aer.searchPar.json` in the same directory you would like to run `etdb-downloads` and then run:
+Now, save this file as `Ps.aer.searchPar.json` in the same directory you would like to run `etdb-downloads` and then run.
 
 ```
 $ etdb-downloads Ps.aer.searchPar.json
@@ -91,7 +91,7 @@ $ etdb-downloads Ps.aer.searchPar.json
 you should see something like this:
 ![](./imgs/2018-05-25-162113_1057x284_scrot.png)
 
-The first thing `etdb-downloads` does is to start an IPFS server for you. Then it will spawn a node, initialize a repository if needed and the start the IPFS node. Then, it will load the metadata of the tomograms and check to see if any of the requested files have been downloaded and if yes, if they are complete. `etdb-downloads` will skip files that have been successfully downloaded.
+The first thing `etdb-downloads` does is to start an IPFS server for you. Then it will spawn a node, initialize a repository if needed and the start the IPFS node. Then, it will load the metadata of the tomograms and check to see if any of the requested files have been downloaded and if yes, `etdb-downloads` will not download them again.
 
 After all that, `etdb-downloads` should retrieve the tomogram metadata from OIP and select only tomograms from _Pseudomonas aeruginosa_. `etdb-downloads` alerts you that there are 89 datasets with a total of 689 files and a total of 359.53 GB to download. If you answer `YES` to this question, ETDB will start downloading all of them.
 
@@ -119,7 +119,6 @@ The default of ETDB-downloads is to download all the files from the dataset. We 
 | Videos |
 | Others |
 | None |
-
 
 For example, let's say that we are only interested in the raw tilt series and the reconstructions. We should then do:
 

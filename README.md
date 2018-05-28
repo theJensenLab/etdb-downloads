@@ -7,5 +7,5 @@ For this reason, we wrote two tutorials: One for users and one for developers. P
 ## Tutorials and manuals
 
 [User Manual](https://github.com/theJensenLab/etdb-bulk-download/blob/master/userManual.md)  
-[Developer Tutorial](https://github.com/theJensenLab/etdb-bulk-download/blob/master/developerManual.md)
+[Developer Tutorial (todo)](https://github.com/theJensenLab/etdb-bulk-download/blob/master/developerManual.md)
 
