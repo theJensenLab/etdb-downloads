@@ -88,7 +88,7 @@ Now, save this file as `Ps.aer.searchPar.json` in the same directory you would l
 $ etdb-downloads Ps.aer.searchPar.json
 ```
 
-you should see something like this:
+you should see something like this:  
 ![](./imgs/2018-05-25-162113_1057x284_scrot.png)
 
 The first thing `etdb-downloads` does is to start an IPFS server for you. Then it will spawn a node, initialize a repository if needed and the start the IPFS node. Then, it will load the metadata of the tomograms and check to see if any of the requested files have been downloaded and if yes, `etdb-downloads` will not download them again.
