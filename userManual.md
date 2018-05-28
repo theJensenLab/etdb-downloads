@@ -43,7 +43,7 @@ Hit Ctrl-d to get out.
 
 ## Installing ETDB-downloads
 
-ETDB-downloads is on npm under the name [etdb-downloads](https://www.npmjs.com/package/etdb-bulk-downloads) and to install simply:
+ETDB-downloads is on npm under the name [etdb-downloads](https://www.npmjs.com/package/etdb-downloads) and to install simply:
 
 ```
 $ npm install -g etdb-downloads
@@ -143,7 +143,7 @@ The IPFS can handle multiple download threads at once. With this flag, we can pa
 
 This is an experimental project. This program will likely hang, break and throw messages that won't make much sense. The best thing to do is to kill the process (Ctrl-C) and restart.
 
-If you would like to contribute to this project, please file an issue [here](https://github.com/theJensenLab/etdb-bulk-downloads/issues) and we will try to get to it as soon as possible.
+If you would like to contribute to this project, please file an issue [here](https://github.com/theJensenLab/etdb-downloads/issues) and we will try to get to it as soon as possible.
 
 If you are a developer, please consider to contribute to the codebase by forking the project and sending a pull request. 
 
