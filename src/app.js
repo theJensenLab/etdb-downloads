@@ -7,6 +7,7 @@ const inquirer = require('inquirer')
 const filesize = require('filesize')
 const complexFilter = require('complex-filter')
 const through2 = require('through2')
+const promiseSerial = require('promise-serial')
 const Listr = require('listr')
 const Observable = require('zen-observable')
 const IPFSFactory = require('ipfsd-ctl')
@@ -88,46 +89,50 @@ const filterExistingFiles = (files, location, localDirectory, ipfs) => {
 				files.forEach((file) => {
 					const fileIpfsPath = '/ipfs/' + location + '/' + file.getFilename()
 					const filePath = path.resolve(localDirectory, location, file.getDisplayName())
-					const promise = new Promise((res, rej) => {
-						if (fs.existsSync(filePath)) {
-							return ipfs.api.files.add([{content: fs.createReadStream(filePath)}], {hashOnly: true, rawLeaves: true})
-								.then((results) => {
-									const hashInfo = hashInfoStack.filter((item) => {
-										return item.path === fileIpfsPath
-									})
-									if (hashInfo.length === 0) {
-										console.log(fileIpfsPath)
-										console.log(hashInfoStack)
-										process.exit()
-									}
-									const hash = hashInfo[0].hash
-									const localFileHash = results[0].hash
-									if (hash === localFileHash) {
+					const promise = () => {
+						return new Promise((res, rej) => {
+							if (fs.existsSync(filePath)) {
+								return ipfs.api.files.add([{content: fs.createReadStream(filePath)}], {hashOnly: true, rawLeaves: true})
+									.then((results) => {
+										const hashInfo = hashInfoStack.filter((item) => {
+											return item.path === fileIpfsPath
+										})
+										if (hashInfo.length === 0) {
+											console.log(fileIpfsPath)
+											console.log(hashInfoStack)
+											process.exit()
+										}
+										const hash = hashInfo[0].hash
+										const localFileHash = results[0].hash
+										if (hash === localFileHash) {
+											// process.stdout.write(chalk.green(info.hash) + ' - ' + chalk.red(localFileHash) + '\n')
+											process.stdout.write(chalk.red(`File ${file.getDisplayName()} exists. Skiping\n`))
+											res(false)
+											return
+										}
 										// process.stdout.write(chalk.green(info.hash) + ' - ' + chalk.red(localFileHash) + '\n')
-										process.stdout.write(chalk.red(`File ${file.getDisplayName()} exists. Skiping\n`))
-										res(false)
+										process.stdout.write(chalk.yellow(`File ${file.getDisplayName()} exists but is corrupt. Scheduling for download\n`))
+										res(true)
 										return
-									}
-									// process.stdout.write(chalk.green(info.hash) + ' - ' + chalk.red(localFileHash) + '\n')
-									process.stdout.write(chalk.yellow(`File ${file.getDisplayName()} exists but is corrupt. Scheduling for download\n`))
-									res(true)
-									return
-								})
-								.catch((err) => {
-									console.log(err)
-									reject(err)
-								})
-						}
-						// process.stdout.write(chalk.green(`File ${file.getDisplayName()} does not exist. Scheduling for download\n`))
-						res(true)
-						return true
-					})
+									})
+									.catch((err) => {
+										console.log(err)
+										reject(err)
+									})
+							}
+							// process.stdout.write(chalk.green(`File ${file.getDisplayName()} does not exist. Scheduling for download\n`))
+							res(true)
+							return true
+						})
+					}
 					promises.push(promise)
 				})
-				Promise.all(promises)
+				let scheduleIndex = 0
+				promiseSerial(promises)
 					.then((schedule) => {
+						// console.log(schedule + ' ' + scheduleIndex)
 						files = files.filter((file, i) => {
-							return schedule[i]
+							return schedule[0]
 						})
 						resolve(files, schedule)
 					})
@@ -221,7 +226,9 @@ module.exports = (queryStack, fileType, resume, threads) => {
 				throw error
 			}
 			process.stdout.write(chalk.green(' OK\n'))
-			initIfNotThere(ipfs)
+			ipfs.version((err, version) => {
+				process.stdout.write(chalk.cyan(`Running IPFS node with go-ipfs version ${version}\n`))
+				initIfNotThere(ipfs)
 				.then(() => {
 					process.stdout.write(chalk.cyan(printMessage('Starting a node ', messageSpace)))
 					ipfs.start((errorr, api) => {
@@ -401,6 +408,7 @@ module.exports = (queryStack, fileType, resume, threads) => {
 						})
 					})
 				})
+			})
 		})
 	})
 }
