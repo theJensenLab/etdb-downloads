@@ -128,15 +128,10 @@ const handleExistingData = (directoryName, manifestFilePath) => {
 	return manifestFiles
 }
 
-
-let heythere = 0
-
 module.exports = (queryStack, fileType, resume, threads) => {
 	spinnerLoadingTomo.start()
 	Core.Index.getArtifacts('*', (artifacts) => {
 		spinnerLoadingTomo.stop()
-		console.log(heythere)
-		heythere++
 		process.stdout.write('\n')
 		const filter = complexFilter(queryStack)
 		const selected = artifacts.filter(filter)

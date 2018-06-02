@@ -57,7 +57,7 @@ $ etdb-downloads -h
 
 and something like this should come up:
 
-![](./imgs/2018-05-25-161306_1218x376_scrot.png)
+![](./imgs/2018-06-02-154118_1164x382_scrot.png)
 
 ## Using ETDB-downloads.
 
@@ -89,23 +89,23 @@ $ etdb-downloads Ps.aer.searchPar.json
 ```
 
 you should see something like this:  
-![](./imgs/2018-05-25-162113_1057x284_scrot.png)
+![](./imgs/2018-06-02-154556_1058x236_scrot.png)
 
-The first thing `etdb-downloads` does is to start an IPFS server for you. Then it will spawn a node, initialize a repository if needed and the start the IPFS node. Then, it will load the metadata of the tomograms and check to see if any of the requested files have been downloaded and if yes, `etdb-downloads` will not download them again.
+The first thing `etdb-downloads` does is to check if there is any already existing data from previous attempts to download. Then, it will load the metadata of the tomograms and check to see if any of the requested files have been downloaded and if yes, `etdb-downloads` will not download them again.
 
 After all that, `etdb-downloads` should retrieve the tomogram metadata from OIP and select only tomograms from _Pseudomonas aeruginosa_. `etdb-downloads` alerts you that there are 89 datasets with a total of 689 files and a total of 359.53 GB to download. If you answer `YES` to this question, ETDB will start downloading all of them.
 
-Please, take a moment to search around the [ETDB-Caltech](https://etdb.caltech.edu) and test a couple search conditions using the `Advanced search`, however, `complex-filter` allows for a more complex association of `AND`, `OR` and `NOT` than the current `Advanced search` feature in the website.
+> Tip: Please, take a moment to search around the [ETDB-Caltech](https://etdb.caltech.edu) and test a couple search conditions using the `Advanced search`, however, `complex-filter` allows for a more complex association of `AND`, `OR` and `NOT` than the current `Advanced search` feature in the website.
 
-Despite the search paramenters, `etdb-downloads` has other optional flags that might be very useful.
+In addition to the search paramenters, `etdb-downloads` has other optional flags that might be very useful.
 
 ### --directory
 
-We can pass this flag to tell `etdb-downloads` where we would like our data to be stored. There are two good reasons to pass this flag: 
+We can pass this flag to tell `etdb-downloads` where we would like to store our data. There are two good reasons to pass this flag: 
 1) It will build this directory for us if we didn't yet
 2) It will avoid to download the same files again, if the download gets interrupted for any reason.
 
-to keep going with our example, let's add `--directory Ps.aer`
+Let's add `--directory Ps.aer` to our example.
 
 ### --fileType option
 
@@ -120,19 +120,19 @@ The default of ETDB-downloads is to download all the files from the dataset. We 
 | Others |
 | None |
 
-For example, let's say that we are only interested in the raw tilt series and the reconstructions. We should then do:
+For example, let's say that we are only interested in the raw tilt series and the reconstructions:
 
 ```
 $ etdb-downloads Ps.aer.searchPar.json --directory Ps.aer --fileType TiltSeries Reconstructions
 ```
 
-![](./imgs/2018-05-25-164518_1055x283_scrot.png)
+![](./imgs/2018-06-02-154905_1053x236_scrot.png)
 
 which leads to less files but with still a large amount of data to download.
 
-If you are unsure, I would recommend to first download only the metadata by picking `None` in `--fileType`.
+>Tip: In case of doubt, I would recommend to first download only the metadata by picking `None` in `--fileType`.
 
-> Note that `None` have precedence to any other type of files and it will ignore other types. Think as a _dry run_ option.
+> Note: `None` has precedence to any other type. Think of it as a _dry run_ option.
 
 ### --threads
 
@@ -141,7 +141,7 @@ The IPFS can handle multiple download threads at once. With this flag, we can pa
 
 ## Important nodes
 
-This is an experimental project. This program will likely hang, break and throw messages that won't make much sense. The best thing to do is to kill the process (Ctrl-C) and restart.
+This is an experimental project. This program will likely hang, break and throw messages that won't make much sense. The best thing to do is to kill the process (Ctrl-C) and restart. The more the files are downloaded, the faster will be the download speed.
 
 If you would like to contribute to this project, please file an issue [here](https://github.com/theJensenLab/etdb-downloads/issues) and we will try to get to it as soon as possible.
 
