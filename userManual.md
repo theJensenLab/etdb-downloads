@@ -139,7 +139,7 @@ which leads to less files but with still a large amount of data to download.
 The IPFS can handle multiple download threads at once. With this flag, we can pass any integer higher than 0 co concurrent downloads. `etdb-downloads` will start a new download everytime one of the threads ends until there are no more files to be downloaded.
 
 
-## Important nodes
+## Important notes
 
 This is an experimental project. This program will likely hang, break and throw messages that won't make much sense. The best thing to do is to kill the process (Ctrl-C) and restart. The more the files are downloaded, the faster will be the download speed.
 
