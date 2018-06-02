@@ -1,6 +1,6 @@
 {
   "name": "etdb-downloads",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Bulk download for the Caltech ETDB",
   "main": "index.js",
   "scripts": {
