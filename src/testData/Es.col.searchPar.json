@@ -1,0 +1,14 @@
+[
+    {
+		"type": "filter",
+		"searchOn": "artifact.details.speciesName",
+		"searchType": "contains",
+		"searchFor": "coli"
+	},
+    {
+        "type": "filter",
+        "searchOn": "artifact.details.microscopist",
+        "searchType": "contains",
+        "searchFor": "Ariane"
+    }
+]
