@@ -9,34 +9,40 @@ const complexFilter = require('complex-filter')
 const through2 = require('through2')
 const Listr = require('listr')
 const Observable = require('zen-observable')
-const IPFSApi = require('ipfs-api')
-const Spinner = require('cli-spinner').Spinner
+const IPFS = require('ipfs')
 
 const messageSpace = 60
+const peerMin = 11
 const simpleType2Subtypes = {
-   Tiltseries: 'TiltSeries',
-   Reconstruction: 'Reconstructions',
-   Subvolume: 'Subvolumes',
-   Keymov: 'Videos',
-   Keyimg: 'Images',
-   Snapshot: 'Images',
-   Other: 'Others'
+	Tiltseries: 'TiltSeries',
+	Reconstruction: 'Reconstructions',
+	Subvolume: 'Subvolumes',
+	Keymov: 'Videos',
+	Keyimg: 'Images',
+	Snapshot: 'Images',
+	Other: 'Others'
 }
 
-const ipfsDownload = new IPFSApi({
-   host: 'gateway.ipfs.io', // 'ipfs.oip.fun',
-   port: 443,
-   protocol: 'https'
+const ipfsNode = new IPFS({
+	repo: './.ipfsRepo',
+	relay: {
+		enabled: true,
+		hop: {
+			enabled: true
+		}
+	},
+	EXPERIMENTAL: {
+		pubsub: false,
+		sharding: false,
+		dht: false
+	}
 })
-
-const spinnerLoadingTomo = new Spinner(chalk.cyan('Loading tomograms, please wait - ') + chalk.hex('#FF6E1E')('%s'))
-spinnerLoadingTomo.setSpinnerString(18)
 
 const OIPJS = require('oip-js').OIPJS
 const Core = OIPJS({
-   indexFilters: {
-	   publisher: 'FTSTq8xx8yWUKJA5E3bgXLzZqqG9V6dvnr' //Jensen Lab publishing address
-   }
+	indexFilters: {
+		publisher: 'FTSTq8xx8yWUKJA5E3bgXLzZqqG9V6dvnr' //Jensen Lab publishing address
+	}
 })
 
 const filterExistingFiles = (filesMetadata, manifestFile) => {
@@ -128,9 +134,180 @@ const handleExistingData = (directoryName, manifestFilePath) => {
 	return manifestFiles
 }
 
+const getArtifacts = (argument) => {
+	return new Promise((resolve, reject) => {
+		Core.Index.getArtifacts('*', (artifacts) => {
+			resolve(artifacts)
+		}, (err) => {
+			reject(err)
+		})
+	})
+}
+
+const prepIPFS = (task) => {
+	return new Promise((resolve, reject) => {
+		let seconds = 0
+		console.log = function(){};
+		ipfsNode.on('ready', () => {
+			const timeId = setInterval(() => {
+				ipfsNode.swarm.peers((err, peerInfo) => {
+					if (err)
+						reject(err)
+					task.title = (`Preparing IPFS node. Number of peers found/expected: ${peerInfo.length}/${peerMin} - waiting since ${seconds}s`)
+					if (peerInfo.length >= peerMin) {
+						clearInterval(timeId)
+						resolve(seconds)
+					}
+					seconds++
+				})
+			}, 1000)
+		})
+	})
+}
+
+const downloadFiles = (artifact, downloadInfo) => {
+	const artifactLocation = artifact.getLocation()
+	const artifactPath = path.resolve(downloadInfo.jobPath, artifactLocation)
+	if (!fs.existsSync(artifactPath))
+		fs.mkdirSync(artifactPath)
+	let files = artifact.getFiles()
+	const selectedFiles = files.filter((file) => {
+		return downloadInfo.allowedFiles.indexOf(file.getFilename()) !== -1
+	})
+	const downloads = []
+	selectedFiles.forEach((file) => {
+		const ipfsFilePath = artifact.getLocation() + '/' + file.getFilename()
+		const filePath = path.resolve(artifactPath, file.getDisplayName())
+		const readStream = ipfsNode.files.getReadableStream(ipfsFilePath)
+		downloads.push(
+			{
+				title: ` ${chalk.green(ipfsFilePath)}`,
+				task: () => {
+					return new Observable((observer) => {
+						let downloaded = 0
+						const totalDownload = file.getFilesize()
+						observer.next(`Progress: ${filesize(downloaded, {base: 10})}/${filesize(totalDownload, {base: 10})}`)
+						readStream
+							.on('error', (err) => {
+								console.log('Error in getting the data')
+								throw err
+							})
+							.pipe(through2.obj((data, enc, next) => {
+								const writeStream = fs.createWriteStream(filePath)
+								data.content
+									.on('data', (dataFlow) => {
+										downloaded += dataFlow.length
+										observer.next(`Progress: ${filesize(downloaded, {base: 10})}/${filesize(totalDownload, {base: 10})}`)
+									})
+									.on('error', (err) => {
+										console.log('Error in getting the data')
+										throw err
+									})
+									.pipe(writeStream)
+									.on('finish', () => {
+										const manifest = `${artifactLocation} : ${file.getFilename()}\n`
+										fs.appendFileSync(downloadInfo.manifestFilePath, manifest)
+										observer.complete()
+									})
+									.on('error', (err) => {
+										console.log('Error in processing the data')
+										throw err
+									})
+							}))
+							.on('error', (err) => {
+								console.log('Error in retrieving the data')
+								console.log(err)
+								throw err
+							})
+					})
+				}
+			}
+		)
+	})
+	return downloads
+}
+
 module.exports = (queryStack, fileType, resume, threads) => {
-	spinnerLoadingTomo.start()
+	const initTasks = new Listr([
+		{
+			title: `Preparing IPFS node. Number of peers found/expected: 0/${peerMin} - waiting since 0s`,
+			task: (ctx, task) => {
+				return prepIPFS(task)
+			}
+		},
+		{
+			title: 'Getting OIP digital artifacts',
+			task: (data) => {
+				return getArtifacts('*').then((artifacts) => {
+					data.art = artifacts
+				})
+			}
+		}
+	], {concurrent: 2})
+
+	initTasks.run()
+		.then((data) => {
+			const artifacts = data.art
+			process.stdout.write('\n')
+			const filter = complexFilter(queryStack)
+			const selected = artifacts.filter(filter)
+			let directoryName = resume || `etdb-download-${Date.now()}`
+			const manifestFilePath = path.resolve(directoryName, '.etdb-downloads.manifest.txt')
+			const manifestFiles = handleExistingData(directoryName, manifestFilePath)
+			const downloadInfo = buildDownloadList(selected, fileType, manifestFiles)
+			downloadInfo.directoryName = directoryName
+			downloadInfo.manifestFilePath = manifestFilePath
+			process.stdout.write(chalk.green(' OK\n'))
+			downloadInfo.numberOfSelectedArtifacts = selected.length
+			downloadInfo.selected = selected
+			return inquirer.prompt([{
+				message: chalk.cyan(`\nThe search parameters selected a ${downloadInfo.numberOfSelectedArtifacts} records with ${downloadInfo.allowedFiles.length} files with a total of ${filesize(downloadInfo.totalDownloadSize, {base: 10})} for download. Would you like to proceed?`),
+				type: 'confirm',
+				name: 'answer'
+			}]).then((answer) => {
+				downloadInfo.answer = answer
+				return downloadInfo
+			})
+		})
+		.then((downloadInfo) => {
+			if (downloadInfo.answer.answer) {
+				downloadInfo.jobPath = path.resolve(downloadInfo.directoryName)
+				process.stdout.write(chalk.cyan('Writing metadata...\n'))
+				const selectedJSON = JSON.stringify(downloadInfo.selected, null, ' ')
+				fs.writeFileSync(path.resolve(downloadInfo.jobPath, 'metadata.json'), selectedJSON)
+			}
+			else {
+				ipfsNode.stop()
+			}
+			return downloadInfo
+		})
+		.then((downloadInfo) => {
+			process.stdout.write(chalk.cyan('Initiating download...\n'))
+			let allDownloadTasks = []
+			downloadInfo.selected.forEach((artifact) => {
+				allDownloadTasks = allDownloadTasks.concat(downloadFiles(artifact, downloadInfo))
+			})
+			const tasks = new Listr(allDownloadTasks, {concurrent: threads})
+			tasks.run()
+				.catch((err) => {
+					console.log('Error processing tasks')
+					console.log(err)
+				})
+		})
+
+/*
+	Promise.all(startUps)
+		.then((inits) => {
+			spinnerLoadingTomo.stop()
+
+		})
+		.catch((err) => {
+			throw err
+		}) */
+/*
 	Core.Index.getArtifacts('*', (artifacts) => {
+		// do something with artifacts
+	})
 		spinnerLoadingTomo.stop()
 		process.stdout.write('\n')
 		const filter = complexFilter(queryStack)
@@ -244,5 +421,5 @@ module.exports = (queryStack, fileType, resume, threads) => {
 		console.error(error.message)
 		throw error
 		process.exit(1)
-	})
+	}) */
 }

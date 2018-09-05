@@ -32,6 +32,7 @@
     "figlet": "^1.2.0",
     "filesize": "^3.6.1",
     "inquirer": "^5.2.0",
+    "ipfs": "^0.31.4",
     "listr": "^0.14.1",
     "oip-js": "^1.1.25",
     "promise-serial": "^0.1.5",
